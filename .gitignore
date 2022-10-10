@@ -1,0 +1,13 @@
+*
+!CMakeLists.txt
+!*.c 
+!*.cpp 
+!*.h
+
+!.gitignore
+!.clang-format
+
+!Dockerfile
+
+!lib/
+!lib/*
