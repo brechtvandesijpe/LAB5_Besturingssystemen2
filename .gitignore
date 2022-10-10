@@ -8,6 +8,7 @@
 !.clang-format
 
 !Dockerfile
+!bootstrap.sh
 
 !lib/
 !lib/*
