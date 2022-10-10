@@ -50,10 +50,18 @@
     #define LOG_CLOSE(...) (void) 0
 #endif
 
-#define INITIAL_TEMPERATURE 20
-#define TEMP_DEV 5 // max deviation from previous temp in 0.1 celsius
+#define INITIAL_TEMPERATURE 22.5
+#define TEMP_DEV 0.5 // max deviation from previous temp in celsius
 
 void print_help(void);
+
+double normalized_rand() {
+    const double min = -1.0;
+    const double max = 1.0;
+    double range = (max - min);
+    double div = RAND_MAX / range;
+    return min + (rand() / div);
+}
 
 /**
  * For starting the sensor node 4 command line arguments are needed. These
@@ -87,6 +95,7 @@ int main(int argc, char* argv[]) {
     }
 
     srand48(time(NULL));
+    srand(time(NULL));
 
     // open TCP connection to the server; server is listening to SERVER_IP and PORT
     if (tcp_active_open(&client, server_port, server_ip) != TCP_NO_ERROR)
@@ -95,7 +104,7 @@ int main(int argc, char* argv[]) {
     data.value = INITIAL_TEMPERATURE;
     i = LOOPS;
     while (i) {
-        data.value = data.value + TEMP_DEV * ((drand48() - 0.5) / 10);
+        data.value = data.value + TEMP_DEV * (normalized_rand() - (data.value - INITIAL_TEMPERATURE) / 100.0);
         time(&data.ts);
         // send data to server in this order (!!):
         // <sensor_id><temperature><timestamp> remark: don't send as a struct!
