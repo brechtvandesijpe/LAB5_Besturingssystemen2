@@ -4,7 +4,7 @@
 
 #include "datamgr.h"
 
-#include "lib/dplist.h"
+#include "lib/vector.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -35,22 +35,7 @@ typedef struct {
     unsigned count;
 } sensor_t;
 
-static dplist_t* list = NULL;
-
-static int sensor_compare(void* el1, void* el2) {
-    return ((sensor_t*) el1)->sensor_id != ((sensor_t*) el2)->sensor_id;
-}
-
-static void* sensor_copy(void* sensor) {
-    sensor_t* sensor_copy = malloc(sizeof(sensor_t));
-    *sensor_copy = *((sensor_t*) sensor);
-    return sensor_copy;
-}
-
-static void sensor_free(void** sensor) {
-    free(*sensor);
-    *sensor = NULL;
-}
+static vector_t* sensors = NULL;
 
 static sensor_value_t sensor_running_average(sensor_t* sensor) {
     sensor_value_t sum = 0;
@@ -60,14 +45,18 @@ static sensor_value_t sensor_running_average(sensor_t* sensor) {
     return sum / RUN_AVG_LENGTH;
 }
 
+static bool sensor_equals(void* s1, void* s2) {
+    return ((sensor_t*) s1)->sensor_id == ((sensor_t*) s2)->sensor_id;
+}
+
 static sensor_t* datamgr_find_sensor(uint16_t sensor_id) {
     sensor_t sensor = {.sensor_id = sensor_id};
-    return dpl_element_match(list, &sensor);
+    return vector_find(sensors, &sensor, sensor_equals);
 }
 
 void datamgr_init() {
-    list = dpl_create(sensor_copy, sensor_free, sensor_compare);
-    assert(list);
+    sensors = vector_create();
+    assert(sensors);
 }
 
 void datamgr_process_reading(const sensor_data_t* data) {
@@ -77,7 +66,7 @@ void datamgr_process_reading(const sensor_data_t* data) {
         // put new sensor in sensor list
         obtained_sensor = calloc(1, sizeof(*obtained_sensor)); // initialize to zero
         obtained_sensor->sensor_id = data->id;
-        dpl_insert_at_index(list, obtained_sensor, 0, false);
+        vector_add(sensors, obtained_sensor);
     }
 
     obtained_sensor->last_modified = data->ts;
@@ -96,6 +85,7 @@ void datamgr_process_reading(const sensor_data_t* data) {
 }
 
 void datamgr_free() {
-    // we've let the list take ownership of the elements now
-    dpl_free(&list, true);
+    for (size_t i = 0; i < vector_size(sensors); i++)
+        free(vector_at(sensors, i));
+    vector_destroy(sensors);
 }

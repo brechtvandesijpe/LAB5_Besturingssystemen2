@@ -1,3 +1,4 @@
+#include "vector.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -32,6 +33,15 @@ void* vector_at(vector_t* vec, size_t index) {
     assert(vec);
     assert(index < vec->size);
     return vec->elements[index];
+}
+
+void* vector_find(vector_t* vec, void* element_to_match, bool (*match_elements)(void*, void*)) {
+    for (size_t i = 0; i < vec->size; i++) {
+        void* element = vector_at(vec, i);
+        if (match_elements(element, element_to_match))
+            return element;
+    }
+    return NULL;
 }
 
 size_t vector_size(vector_t* vec) {

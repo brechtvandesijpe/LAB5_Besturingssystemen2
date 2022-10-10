@@ -17,10 +17,6 @@
 #include <time.h>
 #include <unistd.h>
 
-void socket_free(void** socket) {
-    tcp_close((tcpsock_t**) socket);
-}
-
 void connmgr_listen(int port_number, sbuffer_t* buffer) {
 
 #if DEBUG
