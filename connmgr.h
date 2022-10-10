@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef _GNU_SOURCE
+    #define _GNU_SOURCE
+#endif
+
 #include "config.h"
 #include "lib/tcpsock.h"
 #include "sbuffer.h"

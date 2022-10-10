@@ -4,6 +4,10 @@
  * \author Mathieu Erbas
  */
 
+#ifndef _GNU_SOURCE
+    #define _GNU_SOURCE
+#endif
+
 #include "config.h"
 
 #define SBUFFER_FAILURE -1

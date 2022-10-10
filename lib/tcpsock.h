@@ -1,8 +1,15 @@
 /**
  * \author Luc Vandeurzen
+ * This is simply a high-level wrapper around some low-level Linux networking.
+ * You don't need to understand, or even use this code. You should not need to
+ * change anything here.
  */
 
 #pragma once
+
+#ifndef _GNU_SOURCE
+    #define _GNU_SOURCE
+#endif
 
 #include <stdbool.h>
 #include <time.h>

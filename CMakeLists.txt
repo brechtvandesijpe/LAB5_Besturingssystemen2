@@ -13,7 +13,7 @@ add_subdirectory(lib)
 
 add_library(users SHARED connmgr.c datamgr.c sensor_db.c)
 target_compile_options(users PRIVATE ${COMMON_FLAGS})
-target_link_libraries(users dplist tcpsock "-lsqlite3")
+target_link_libraries(users vector dplist tcpsock "-lsqlite3")
 
 add_library(sbuffer SHARED sbuffer.c)
 target_compile_options(sbuffer PRIVATE ${COMMON_FLAGS})

@@ -15,19 +15,23 @@ vector_t* vector_create() {
 void vector_add(vector_t* vec, void* element) {
     assert(vec);
     vec->size++;
-    vec->elements = realloc(vec->elements, vec->size);
+    vec->elements = realloc(vec->elements, vec->size * sizeof(*vec->elements));
     vec->elements[vec->size - 1] = element;
 }
 
 void vector_remove_at_index(vector_t* vec, size_t index) {
     assert(vec);
     assert(index < vec->size);
-    memmove(vec->elements + index, vec->elements + index + 1, (vec->size - index) * sizeof(*vec->elements));
+    if (index < vec->size - 1)
+        memmove(vec->elements + index, vec->elements + index + 1, (vec->size - index - 1) * sizeof(*vec->elements));
+    vec->elements[vec->size - 1] = NULL; // to help debugging
+    vec->size--;
 }
 
-void** vector_elements(vector_t* vec) {
+void* vector_at(vector_t* vec, size_t index) {
     assert(vec);
-    return vec->elements;
+    assert(index < vec->size);
+    return vec->elements[index];
 }
 
 size_t vector_size(vector_t* vec) {

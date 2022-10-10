@@ -1,5 +1,8 @@
 /**
  * \author Luc Vandeurzen
+ * This is simply a high-level wrapper around some low-level Linux networking.
+ * You don't need to understand, or even use this code. You should not need to
+ * change anything here.
  */
 
 #define _GNU_SOURCE

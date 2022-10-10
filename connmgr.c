@@ -1,8 +1,8 @@
 #include "connmgr.h"
 
 #include "config.h"
-#include "lib/dplist.h"
 #include "lib/tcpsock.h"
+#include "lib/vector.h"
 #include "sbuffer.h"
 
 #include <assert.h>
@@ -29,29 +29,29 @@ void connmgr_listen(int port_number, sbuffer_t* buffer) {
     assert(fd > 0);
 #endif
 
-    dplist_t* list = dpl_create(NULL, socket_free, NULL);
+    vector_t* sockets = vector_create();
 
     {
         tcpsock_t* connection_socket = NULL;
         if (tcp_passive_open(&connection_socket, port_number) != TCP_NO_ERROR)
             exit(EXIT_FAILURE);
-        dpl_insert_at_index(list, connection_socket, 0, false);
+        vector_add(sockets, connection_socket);
     }
 
     bool active = true;
     struct pollfd* fds = NULL;
     while (active) {
-        fds = realloc(fds, dpl_size(list) * sizeof(*fds));
+        fds = realloc(fds, vector_size(sockets) * sizeof(*fds));
 
-        for (iterator_t it = it_begin(list); !it_is_null(&it); it_incr(&it)) {
-            tcpsock_t* socket = it_get_element(&it);
-            fds[it.index] = (struct pollfd){
+        for (size_t i = 0; i < vector_size(sockets); i++) {
+            tcpsock_t* socket = vector_at(sockets, i);
+            fds[i] = (struct pollfd){
                 .fd = socket->sd,
                 .events = POLLIN,
             };
         }
 
-        int n = poll(fds, dpl_size(list), TIMEOUT * 1000);
+        int n = poll(fds, vector_size(sockets), TIMEOUT * 1000);
         assert(n != -1);
 
         if (n == 0) {
@@ -59,21 +59,23 @@ void connmgr_listen(int port_number, sbuffer_t* buffer) {
             printf("No sensor data received after " TO_STRING(TIMEOUT) " seconds. Quitting server.\n");
             active = false;
         } else {
-            // loop dplist to to handle the sockets
-            for (iterator_t it = it_begin(list); !it_is_null(&it); it_incr(&it)) {
-                tcpsock_t* socket = it_get_element(&it);
-                if (it.index != 0 && time(NULL) > *tcp_last_seen(socket) + TIMEOUT) {
+            // loop over sockets
+            size_t size = vector_size(sockets); // cache up front because some sockets may get added
+            for (size_t i = 0; i < size; i++) {
+                tcpsock_t* socket = vector_at(sockets, i);
+                if (i != 0 && time(NULL) > *tcp_last_seen(socket) + TIMEOUT) {
                     printf("Sensor with id %d timed out. \n", *tcp_last_seen_sensor_id(socket));
-                    dpl_remove_at_iterator(list, &it, true);
-                } else if ((fds[it.index].revents & POLLIN) != 0) {
+                    tcp_close(&socket);
+                    vector_remove_at_index(sockets, i);
+                    break;
+                } else if ((fds[i].revents & POLLIN) != 0) {
                     *tcp_last_seen(socket) = time(NULL);
-                    if (it.index == 0) { // a new sensor is connected
+                    if (i == 0) { // a new sensor is connected
                         tcpsock_t* new_socket = NULL;
                         tcp_wait_for_connection(socket, &new_socket);
-                        dpl_insert_at_index(list, new_socket, dpl_size(list), false);
-                        it_invalidate(&it);
-
-                    } else { // data from existent connection is obtained
+                        // this does not invalidate our loop since we only iterate over the original sockets
+                        vector_add(sockets, new_socket);
+                    } else { // data from existing connection is obtained
                         sensor_data_t data;
                         int bytes = sizeof(data.id);
                         tcp_receive(socket, &data.id, &bytes);
@@ -98,15 +100,14 @@ void connmgr_listen(int port_number, sbuffer_t* buffer) {
 #endif
                             printf("sensor id = %" PRIu16 " - temperature = %g - timestamp = %ld\n", data.id, data.value, data.ts);
                             sbuffer_lock(buffer);
-                            if (sbuffer_insert_first(buffer, &data) == SBUFFER_FAILURE) {
-                                active = false;
-                                it_invalidate(&it);
-                            }
+                            int ret = sbuffer_insert_first(buffer, &data);
+                            assert(ret == SBUFFER_SUCCESS);
                             sbuffer_unlock(buffer);
-
                         } else if (result == TCP_CONNECTION_CLOSED) {
                             printf("Sensor with id %" PRIu16 " disconnected\n", *tcp_last_seen_sensor_id(socket));
-                            dpl_remove_at_iterator(list, &it, true);
+                            tcp_close(&socket);
+                            vector_remove_at_index(sockets, i);
+                            break;
                         }
                     }
                 }
@@ -117,5 +118,10 @@ void connmgr_listen(int port_number, sbuffer_t* buffer) {
 #if DEBUG
     close(fd);
 #endif
-    dpl_free(&list, true);
+
+    for (size_t i = 0; i < vector_size(sockets); i++) {
+        tcpsock_t* socket = vector_at(sockets, i);
+        tcp_close(&socket);
+    }
+    vector_destroy(sockets);
 }
