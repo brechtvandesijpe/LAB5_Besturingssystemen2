@@ -29,6 +29,10 @@ bool sbuffer_is_empty(sbuffer_t* buffer);
 
 bool sbuffer_is_closed(sbuffer_t* buffer);
 
+bool sbuffer_has_data_to_process(sbuffer_t* buffer);
+
+bool sbuffer_has_processed_data_to_store(sbuffer_t* buffer);
+
 /*
     Gain/release exclusive access to the buffer
     TODO: these functions should not exist!
@@ -36,8 +40,8 @@ bool sbuffer_is_closed(sbuffer_t* buffer);
         internal to the buffer, users should not
         be concerned with it!
 */
-void sbuffer_lock(sbuffer_t* buffer);
-void sbuffer_unlock(sbuffer_t* buffer);
+//void sbuffer_lock(sbuffer_t* buffer);
+//void sbuffer_unlock(sbuffer_t* buffer);
 
 /**
  * Inserts the sensor data in 'data' at the start of 'buffer' (at the 'head')
@@ -52,6 +56,12 @@ int sbuffer_insert_first(sbuffer_t* buffer, sensor_data_t const* data);
  * \return the removed measurement
  */
 sensor_data_t sbuffer_remove_last(sbuffer_t* buffer);
+
+/**
+ * Returns the last measurement in the buffer (at the 'tail')
+ * \return the last measurement
+ */
+sensor_data_t sbuffer_get_last(sbuffer_t* buffer);
 
 /**
  * Closes the buffer. This signifies that no more data will be inserted.

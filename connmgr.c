@@ -16,6 +16,8 @@
 #include <sys/poll.h>
 #include <time.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <wait.h>
 
 void connmgr_listen(int port_number, sbuffer_t* buffer) {
 
@@ -36,7 +38,11 @@ void connmgr_listen(int port_number, sbuffer_t* buffer) {
 
     bool active = true;
     struct pollfd* fds = NULL;
-    while (active) {
+    int nrOfSensorValues = 0;
+
+    while (active 
+    //&& (nrOfSensorValues < 100)
+    ) {
         fds = realloc(fds, vector_size(sockets) * sizeof(*fds));
 
         for (size_t i = 0; i < vector_size(sockets); i++) {
@@ -94,11 +100,15 @@ void connmgr_listen(int port_number, sbuffer_t* buffer) {
                             ASSERT_ELSE_PERROR(write(fd, &data.value, sizeof(data.value)) == sizeof(data.value));
                             ASSERT_ELSE_PERROR(write(fd, &data.ts, sizeof(data.ts)) == sizeof(data.ts));
 #endif
-                            printf("sensor id = %" PRIu16 " - temperature = %g - timestamp = %ld\n", data.id, data.value, data.ts);
-                            sbuffer_lock(buffer);
+                            nrOfSensorValues++;
+                            printf("sensor id = %" PRIu16 " - temperature = %g - timestamp = %ld  [%d]\n", data.id, data.value, data.ts, nrOfSensorValues);
+                            
+                            // init the processed status
+                            data.isProcessed = false;
+
                             int ret = sbuffer_insert_first(buffer, &data);
                             assert(ret == SBUFFER_SUCCESS);
-                            sbuffer_unlock(buffer);
+
                         } else if (result == TCP_CONNECTION_CLOSED) {
                             printf("Sensor with id %" PRIu16 " disconnected\n", *tcp_last_seen_sensor_id(socket));
                             tcp_close(&socket);
